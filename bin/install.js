@@ -35,6 +35,11 @@ function settingsPath() {
   return path.join(home, '.claude', 'settings.json');
 }
 
+function skillsDir() {
+  const home = os.homedir();
+  return path.join(home, '.claude', 'skills');
+}
+
 function readSettings(filePath) {
   if (!fs.existsSync(filePath)) return {};
   try {
@@ -56,6 +61,23 @@ function writeSettings(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf-8');
 }
 
+/** 递归复制目录 */
+function copyDirectory(src, dest) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectory(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 // ── uninstall ────────────────────────────────────────
 function uninstall() {
   const header = `
@@ -64,7 +86,7 @@ function uninstall() {
   ║     Evolutionary Constraint Development       ║
   ╚══════════════════════════════════════════════╝
 
-  正在从 settings.json 中移除 ECD-next 配置…
+  正在移除 ECD-next 配置和技能文件…
   `;
   console.log(header);
 
@@ -75,6 +97,7 @@ function uninstall() {
 
   let changed = false;
 
+  // 移除 marketplace 注册
   if (settings.extraKnownMarketplaces && settings.extraKnownMarketplaces[MARKETPLACE_NAME]) {
     delete settings.extraKnownMarketplaces[MARKETPLACE_NAME];
     if (Object.keys(settings.extraKnownMarketplaces).length === 0) {
@@ -86,6 +109,7 @@ function uninstall() {
     console.log('  ⏭️  marketplace 不存在，跳过');
   }
 
+  // 禁用插件
   if (settings.enabledPlugins && settings.enabledPlugins[PLUGIN_KEY]) {
     delete settings.enabledPlugins[PLUGIN_KEY];
     if (Object.keys(settings.enabledPlugins).length === 0) {
@@ -95,6 +119,29 @@ function uninstall() {
     changed = true;
   } else {
     console.log('  ⏭️  插件未启用，跳过');
+  }
+
+  // 移除直接安装的技能文件
+  const destSkillsDir = skillsDir();
+  const subSkills = ['ecd-next', 'ecd-pre', 'ecd-plan', 'ecd-code', 'ecd-achieve'];
+  let filesRemoved = 0;
+  for (const skill of subSkills) {
+    const skillDir = path.join(destSkillsDir, skill);
+    if (fs.existsSync(skillDir)) {
+      fs.rmSync(skillDir, { recursive: true, force: true });
+      console.log(`  ✅ 已删除技能目录: ${skill}`);
+      filesRemoved++;
+    }
+  }
+  // 移除 shared 模块（仅在未被其他技能使用时）
+  const sharedDir = path.join(destSkillsDir, 'shared');
+  if (fs.existsSync(sharedDir)) {
+    fs.rmSync(sharedDir, { recursive: true, force: true });
+    console.log('  ✅ 已删除共享模块: shared/');
+    filesRemoved++;
+  }
+  if (filesRemoved > 0) {
+    changed = true;
   }
 
   if (changed) {
@@ -108,6 +155,7 @@ function uninstall() {
   ┌──────────────────────────────────────────────┐
   │  🧹 ECD-next v${PKG_VERSION} 卸载完成            │
   │                                              │
+  │  已移除所有技能文件和 marketplace 配置         │
   │  重启 Claude Code 后生效                      │
   │                                              │
   │  如需重新安装：                                │
@@ -175,7 +223,52 @@ function main() {
     console.log('  ⏭️  插件已启用，跳过');
   }
 
-  // ── Step 3: 写入 ──
+  // ── Step 3: 直接复制技能文件到 ~/.claude/skills/ ──
+  // 这样即使 GitHub 不可达（国内网络），技能也能立即可用
+  const pkgRoot = path.join(__dirname, '..');
+  const pkgSkillsDir = path.join(pkgRoot, 'skills');
+  const pkgSharedDir = path.join(pkgRoot, 'shared');
+  const destSkillsDir = skillsDir();
+
+  const subSkills = ['ecd-next', 'ecd-pre', 'ecd-plan', 'ecd-code', 'ecd-achieve'];
+
+  if (fs.existsSync(pkgSkillsDir)) {
+    let skillsCopied = 0;
+
+    for (const skill of subSkills) {
+      const src = path.join(pkgSkillsDir, skill);
+      const dest = path.join(destSkillsDir, skill);
+      if (fs.existsSync(src)) {
+        copyDirectory(src, dest);
+        // 修正 shared/ 引用路径：
+        //   原始: ../../shared/ecd-core.md  (skills/<name>/SKILL.md → 包根/shared/)
+        //   目标: ../shared/ecd-core.md     (.claude/skills/<name>/SKILL.md → .claude/skills/shared/)
+        const skillMd = path.join(dest, 'SKILL.md');
+        if (fs.existsSync(skillMd)) {
+          let content = fs.readFileSync(skillMd, 'utf-8');
+          content = content.replace(/\.\.\/\.\.\/shared\//g, '../shared/');
+          fs.writeFileSync(skillMd, content, 'utf-8');
+        }
+        console.log(`  ✅ 已安装技能: /${skill}`);
+        skillsCopied++;
+      }
+    }
+
+    // 安装 shared 共享模块
+    if (fs.existsSync(pkgSharedDir)) {
+      const sharedDest = path.join(destSkillsDir, 'shared');
+      copyDirectory(pkgSharedDir, sharedDest);
+      console.log('  ✅ 已安装共享模块: shared/ecd-core.md');
+    }
+
+    if (skillsCopied > 0) {
+      changed = true;
+    }
+  } else {
+    console.log('  ⚠️  未找到 skills/ 目录，跳过直接复制（将依赖 marketplace 下载）');
+  }
+
+  // ── Step 4: 写入 settings.json ──
   if (changed) {
     writeSettings(filePath, settings);
     console.log('\n  💾 已保存 settings.json');
@@ -185,11 +278,9 @@ function main() {
 
   console.log(`
   ┌──────────────────────────────────────────────┐
-  │  🎉 ECD-next v${PKG_VERSION} 配置完成！          │
+  │  🎉 ECD-next v${PKG_VERSION} 安装完成！          │
   │                                              │
-  │  下一步：                                     │
-  │  1. 重启 Claude Code                          │
-  │  2. 输入以下命令开始使用：                       │
+  │  重启 Claude Code 后可用命令：                   │
   │     /ecd-next     一键式全流程                  │
   │     /ecd-pre      需求与约束提取                │
   │     /ecd-plan     架构与任务拆解                │
