@@ -53,4 +53,4 @@ description: 演进约束开发 (Evolutionary Constraint Development, ECD)——
 
 - 目录扫描：`Bash`（如 `ls .ecd/`）或 `Glob`
 - 产物读取：`Read`
-- 脚本执行：`Bash`（如 `python scripts/ecd.py`）
+- 脚本执行：`Bash`（如 `python ../../scripts/ecd.py`）

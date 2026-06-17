@@ -23,7 +23,7 @@ description: ECD 阶段 3：严格按交接包执行编码。从 90-code-handoff
 
 ### 3. 加载 Core 规范
 
-用 `Read` 加载 `shared/ecd-core.md` 中的以下模块：
+用 `Read` 加载 `../../shared/ecd-core.md` 中的以下模块：
 - **模块 3：阶段门控规则**
 - **模块 4：共享工具映射**
 

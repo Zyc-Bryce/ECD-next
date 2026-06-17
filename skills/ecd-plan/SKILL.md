@@ -23,7 +23,7 @@ description: ECD 阶段 2：收敛需求，生成 code-ready 交接包。读取 
 
 ### 3. 加载 Core 规范
 
-用 `Read` 加载 `shared/ecd-core.md` 中的以下模块：
+用 `Read` 加载 `../../shared/ecd-core.md` 中的以下模块：
 - **模块 1：Artifact 目录规范**（plan 产物规格）
 - **模块 3：阶段门控规则**
 - **模块 4：共享工具映射**
@@ -44,7 +44,7 @@ description: ECD 阶段 2：收敛需求，生成 code-ready 交接包。读取 
 **L3：完整 10 阶段**
 - C → D → E → F → G → H → J
 - D/G/H/J 必须使用 `Agent` 工具启动独立子 Agent
-- 详见 `references/stage-playbook.md` 和 `references/subagent-protocol.md`
+- 详见 `../../references/stage-playbook.md` 和 `references/subagent-protocol.md`
 
 ### 5. 写入产物
 
