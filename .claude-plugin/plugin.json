@@ -1,0 +1,19 @@
+{
+  "name": "ecd-next",
+  "version": "2.0.0",
+  "description": "ECD v2 — 演进约束开发。将一个模糊需求通过 pre-plan-code-achieve 闭环转化为高质量代码。支持一键式全流程或独立阶段调用。",
+  "author": {
+    "name": "Zyc-Bryce",
+    "url": "https://github.com/Zyc-Bryce"
+  },
+  "repository": "https://github.com/Zyc-Bryce/ECD",
+  "homepage": "https://github.com/Zyc-Bryce/ECD#readme",
+  "skills": [
+    ".",
+    "./ecd-pre",
+    "./ecd-plan",
+    "./ecd-code",
+    "./ecd-achieve"
+  ],
+  "tags": ["workflow", "planning", "code-review", "constraint-driven", "chinese"]
+}

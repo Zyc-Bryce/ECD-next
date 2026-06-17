@@ -1,0 +1,20 @@
+{
+  "name": "ecd-next-marketplace",
+  "owner": {
+    "name": "Zyc-Bryce",
+    "url": "https://github.com/Zyc-Bryce"
+  },
+  "metadata": {
+    "description": "ECD v2 (演进约束开发) — 语义冻结 + 约束驱动的 AI 编程方法论。支持独立阶段命令 /ecd-pre /ecd-plan /ecd-code /ecd-achieve 和一键式 /ecd-next。",
+    "version": "2.0.0"
+  },
+  "plugins": [
+    {
+      "name": "ecd-next",
+      "source": "./",
+      "description": "ECD v2 — 演进约束开发，独立阶段命令 + 一键式路由",
+      "version": "2.0.0",
+      "homepage": "https://github.com/Zyc-Bryce/ECD"
+    }
+  ]
+}

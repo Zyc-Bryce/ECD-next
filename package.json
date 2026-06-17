@@ -1,0 +1,61 @@
+{
+  "name": "@zyc-bryce/ecd-next",
+  "version": "2.0.0",
+  "description": "ECD v2 (演进约束开发) — Claude Code 技能。支持独立阶段命令 /ecd-pre /ecd-plan /ecd-code /ecd-achieve 和一键式 /ecd-next。Artifact 驱动工作流，Core + Stage Skills 可扩展架构。",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "claude-code-skill",
+    "skill",
+    "plugin",
+    "workflow",
+    "planning",
+    "code-review",
+    "security",
+    "constraint-driven",
+    "pre-plan-code-achieve",
+    "chinese",
+    "artifact-driven"
+  ],
+  "author": {
+    "name": "Zyc-Bryce",
+    "url": "https://github.com/Zyc-Bryce"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zyc-Bryce/ECD-next.git"
+  },
+  "homepage": "https://github.com/Zyc-Bryce/ECD-next#readme",
+  "bugs": {
+    "url": "https://github.com/Zyc-Bryce/ECD-next/issues"
+  },
+  "bin": {
+    "ecd-next": "./bin/install.js"
+  },
+  "files": [
+    ".claude-plugin/",
+    "SKILL.md",
+    "ecd-pre/",
+    "ecd-plan/",
+    "ecd-code/",
+    "ecd-achieve/",
+    "shared/",
+    "scripts/",
+    "templates/",
+    "schemas/",
+    "references/",
+    "docs/",
+    "agents/",
+    "bin/",
+    "README.md",
+    "README.zh-CN.md",
+    "USAGE.zh-CN.md",
+    "CHANGELOG.zh-CN.md",
+    "LICENSE"
+  ],
+  "claudeCode": {
+    "marketplace": ".claude-plugin/marketplace.json",
+    "plugin": ".claude-plugin/plugin.json"
+  }
+}
