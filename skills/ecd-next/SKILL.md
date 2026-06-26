@@ -13,29 +13,34 @@ description: 演进约束开发 (Evolutionary Constraint Development, ECD)——
 
 ### 1. 扫描 Artifact 状态
 
-检查项目根目录下 `.ecd/` 的结构：
+读取 `.ecd/current` 获取活跃 case slug `<slug>`。若不存在或为空 → 无活跃 case。
+
+检查 `.ecd/cases/<slug>/` 下的结构：
 
 ```
-.ecd/
+cases/<slug>/
   pre/    → pre 阶段已完成？
   plan/   → plan 阶段已完成？
   code/runs/ → code 阶段有运行记录？
+  achieve/ → 已验收？
 ```
 
 ### 2. 自动路由
 
 | 当前状态 | 路由到 | 说明 |
 |---------|--------|------|
-| `.ecd/` 不存在或为空 | `ecd-pre` | 从需求澄清开始 |
+| 无活跃 case（`.ecd/current` 不存在或为空） | `ecd-pre` | 从需求澄清开始 |
 | 有 `pre/00-overview.md` 无 `plan/90-code-handoff.md` | `ecd-plan` | 从架构拆解继续 |
 | 有 `plan/90-code-handoff.md` 无 `code/runs/` | `ecd-code` | 从编码实现继续 |
-| 有 `code/runs/` 待验收 | `ecd-achieve` | 从验收判定继续 |
+| 有 `code/runs/` 无 `achieve/03-achieve.md` | `ecd-achieve` | 从验收判定继续 |
+| 有 `achieve/03-achieve.md` 且判定为 `not_achieved` 或 `achieved_with_followups` | `ecd-code` | 修订或继续编码 |
 
 ### 3. 用户覆盖
 
 用户可以显式指定阶段：
-- "/ecd-next 从头开始" → 强制路由到 ecd-pre
+- "/ecd-next 从头开始" → 强制路由到 ecd-pre（新 case）
 - "/ecd-next 直接编码" → 尝试路由到 ecd-code（需门控通过）
+- "/ecd-next 继续" → 自动发现当前 case 进度并路由
 
 ### 4. 执行
 
@@ -51,6 +56,6 @@ description: 演进约束开发 (Evolutionary Constraint Development, ECD)——
 
 ## 工具映射
 
-- 目录扫描：`Bash`（如 `ls .ecd/`）或 `Glob`
+- 目录扫描：`Read .ecd/current` + `Glob .ecd/cases/<slug>/`
 - 产物读取：`Read`
 - 脚本执行：`Bash`（如 `python ../../scripts/ecd.py`）

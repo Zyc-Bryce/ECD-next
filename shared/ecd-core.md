@@ -7,32 +7,46 @@
 
 ## 模块 1：Artifact 目录规范
 
-所有 ECD 阶段产物写入项目根目录下的 `.ecd/`，按阶段分子目录：
+所有 ECD 阶段产物写入项目根目录下的 `.ecd/`。**采用 case 隔离结构**——每次 ECD 流程为一个独立 case，避免跨 case 产物混杂。
 
 ```
 .ecd/
-  pre/                         ← ecd-pre 写入
-    00-overview.md             ←   需求重述、等级、范围边界、假设、审批记录
-    05-constraint-ledger.md    ←   约束账本（冻结的决策）
-    case.json                  ←   规范化 case 数据（L2/L3）
+  current                       ← 纯文本文件，内容为活跃 case 的 slug（无活跃 case 时为空或不存在）
+  .gitignore                    ← 建议内容: cases/\narchive/
 
-  plan/                        ← ecd-plan 写入
-    90-code-handoff.md         ←   交接包（code 唯一入口）
-    91-canonical-contracts.md  ←   接口契约
-    92-constraint-crosswalk.md ←   约束映射表
-    95-execution-manifest.md   ←   执行清单
-    96-code-batches.md         ←   分批计划
+  cases/
+    <case-slug>/                ← 每个 case 独立子树（slug 格式见模块 6）
+      pre/                      ← ecd-pre 写入
+        00-overview.md
+        05-constraint-ledger.md
+        case.json               ← L2/L3
 
-  code/                        ← ecd-code 写入
-    runs/
-      <run-id>/                ←   每次运行一个子目录（001, 002...）
-        00-code-run.md         ←   运行记录
-        01-verification.md     ←   验证结果
-        02-reentry.md          ←   （可选）中断重入标记
+      plan/                     ← ecd-plan 写入
+        90-code-handoff.md      ← L1/L2/L3 均生成
+        91-canonical-contracts.md ← L2/L3
+        95-execution-manifest.md  ← L2/L3（L2 含批次与顺序附节）
 
-  achieve/                     ← ecd-achieve 写入
-    03-achieve.md              ←   验收判定
+        -- 以下仅 L3 生成 --
+        92-constraint-crosswalk.md
+        93-dependency-graph.md
+        96-code-batches.md
+
+      code/                     ← ecd-code 写入
+        runs/
+          <run-id>/             ← 每次运行一个子目录（001, 002...，每个 case 从 001 开始）
+            00-code-run.md      ← 运行记录（修订运行标注 revision-of）
+            01-verification.md  ← 验证结果
+            02-reentry.md       ← （可选）中断重入标记
+            03-revision.md      ← （修订运行时）修订说明
+
+      achieve/                  ← ecd-achieve 写入
+        03-achieve.md           ← 验收判定
+
+  archive/                      ← 已完成的 case（achieve 判定 archived 后移入）
+    <case-slug>/                ← 完整 case 子树原样保留
 ```
+
+**活跃 case 定位**：所有阶段启动时先读 `.ecd/current` 获取活跃 case slug，拼接路径 `.ecd/cases/<slug>/` 定位产物。
 
 **文件编号规则**：`00-` 概览类、`05-` 约束类、`90-` 交接类、`03-` 验收类。
 
@@ -90,19 +104,22 @@ greenfield 项目（无现有仓库）→ Q1 默认 L2
 
 ## 模块 3：阶段门控规则
 
+> 所有路径相对于活跃 case 目录 `.ecd/cases/<slug>/`。先读 `.ecd/current` 获取 `<slug>`。
+
 | 命令 | 门控检查 | 缺失时行为 |
 |------|---------|-----------|
-| `/ecd-pre` | 无前置要求 | 直接启动 |
-| `/ecd-plan` | `.ecd/pre/00-overview.md` 存在？ | 阻塞："未找到 `.ecd/pre/00-overview.md`，请先执行 `/ecd-pre`" |
-| `/ecd-code` | `.ecd/plan/90-code-handoff.md` 存在？ | 阻塞："未找到 `.ecd/plan/90-code-handoff.md`，请先执行 `/ecd-plan`" |
-| `/ecd-achieve` | `.ecd/code/runs/` 至少一个 run？ | 阻塞："未找到 `.ecd/code/runs/` 运行记录，请先执行 `/ecd-code`" |
+| `/ecd-pre` | `.ecd/current` 不存在或为空？→ 直接启动新 case | 无阻塞。若 `.ecd/current` 已有活跃 case → 警告用户存在未完成 case，由用户选择继续或放弃 |
+| `/ecd-plan` | `cases/<slug>/pre/00-overview.md` 存在？ | 阻塞："未找到 pre 产物，请先执行 `/ecd-pre`" |
+| `/ecd-code` | `cases/<slug>/plan/90-code-handoff.md` 存在？ | 阻塞："未找到 plan 交接包，请先执行 `/ecd-plan`" |
+| `/ecd-code` (修订) | `cases/<slug>/plan/90-code-handoff.md` 存在 + 上次 run 已完成 | 交接包完好，可直接修订。修订范围不得超出原交接包边界。超出 → 提示先执行 `/ecd-pre`。最多 3 轮修订 |
+| `/ecd-achieve` | `cases/<slug>/code/runs/` 至少一个 run？ | 阻塞："未找到 code 运行记录，请先执行 `/ecd-code`" |
 
 **artifact 自动发现逻辑**：
 
-1. 检查 `<project_root>/.ecd/` 是否存在
-2. 扫描各子目录（pre/ plan/ code/runs/ achieve/）
+1. 读取 `.ecd/current` 获取活跃 case slug
+2. 检查 `cases/<slug>/` 下各子目录（pre/ plan/ code/runs/ achieve/）
 3. 根据已有产物判断当前可执行的阶段
-4. 无需用户手动指定 case.json 或 bundle 路径
+4. 无需用户手动指定路径
 
 ---
 
@@ -125,5 +142,62 @@ greenfield 项目（无现有仓库）→ Q1 默认 L2
 
 - 所有产物为 Markdown，UTF-8 无 BOM
 - 文件编号规则：`00-` 概览类、`05-` 约束类、`90-` 交接类、`03-` 验收类
-- Bundle 校验命令：`python scripts/validate_ecl_bundle.py .ecd/`
+- Bundle 校验命令：`python scripts/validate_ecl_bundle.py .ecd/cases/<slug>/`
 - 脚本路径：相对于 `ecd-next/` 根目录，如 `python scripts/ecd.py pre --request "..." --output .ecd/pre`
+
+---
+
+## 模块 6：Case 生命周期
+
+### Case Slug 格式
+
+```
+<YYYYMMDD>-<kebab-desc>-<4char-hex>
+```
+
+- **日期**：pre 启动日期（`20260626`）
+- **描述**：从 `00-overview.md` 标题提取，kebab-case，最长 30 字符（`empty-tray-out`）
+- **随机后缀**：4 位 hex，防同日同描述碰撞（`a3f2`）
+
+示例：`20260626-empty-tray-out-a3f2`
+
+### 活跃 Case 管理
+
+- `.ecd/current`：纯文本文件，存储活跃 case slug。**一行，无换行，无空格**。
+- 每个阶段启动时第一步：`Read .ecd/current` → 拼接 `cases/<slug>/` 定位产物。
+- `.ecd/current` 不存在或为空 → 只有 `/ecd-pre` 可执行（创建新 case），其他阶段阻塞。
+
+### 孤儿 Case 检测
+
+`/ecd-pre` 启动时：
+1. 检查 `.ecd/current` 是否存在且非空
+2. 若已有活跃 case → **警告用户**："检测到未完成 case `<slug>`。请选择：A) 继续当前 case B) 放弃并开始新 case"
+3. 选择 B → 旧 case 移到 `archive/`（标记为 `not_achieved`），创建新 case
+4. 选择 A → 拒绝新建，提示用户执行对应阶段继续
+
+### Archive 规则（ecd-achieve 执行）
+
+| 判定 | 动作 | `.ecd/current` |
+|------|------|----------------|
+| `archived` | `Move-Item cases/<slug> archive/<slug>` | 清空（写入空字符串） |
+| `achieved_with_followups` | case 保持活跃。`03-achieve.md` 记录遗留项清单。用户可执行 `/ecd-code` 继续修订 | 保持不变 |
+| `not_achieved` | case 保持活跃。等待重新编码 | 保持不变 |
+
+### Run-id 作用域
+
+- 每个 case 独立编号，从 `001` 开始
+- 修订运行递增：`002`, `003`...
+- 新 case → run-id 重置为 `001`
+
+### .gitignore 建议
+
+`.ecd/` 根目录下创建 `.gitignore`：
+```
+cases/
+archive/
+```
+保留 `.ecd/current` 可被 git 追踪，让团队知晓当前活跃 case。
+
+### 迁移说明
+
+旧版平铺 `.ecd/`（pre/ plan/ code/ achieve/ 直接在 `.ecd/` 下）不再使用。首次运行新版 `/ecd-pre` 时自动创建 case 目录结构。旧产物可手动删除或移入 `archive/legacy/`。
